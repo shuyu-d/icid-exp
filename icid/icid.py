@@ -16,13 +16,6 @@ Contact: shuyu.dong@inria.fr
 """
 
 
-
-"""
-Optimization of the -- problem.
-       lr:          two term low-rank matrix product
-       po:          mask
-       sigma_abs:   produce the nonnegative surrogate matrix
-"""
 import numpy as np
 from timeit import default_timer as timer
 import pandas as pd
