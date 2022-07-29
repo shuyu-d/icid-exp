@@ -24,6 +24,7 @@ For the ID problem, phi(B) = (1/s)(I-B)(I-B)' is a quadratic matrix function of 
 - Python 3.6+
 - `numpy`
 - `scipy`
+- `scikit-learn` : the module `GraphLasso` (named `GraphicalLasso` in more recent version of scikit-learn) is used for the step (IC).
 - `python-igraph`: Install [igraph C core](https://igraph.org/c/) and `pkg-config` first.
 - `pywt`: for the soft-threshod function (TODO: copy this function individually to remove this unnecessary dependency) 
 - `NOTEARS/utils.py` - graph simulation, data simulation, and accuracy evaluation from [Zheng et al. 2018]
