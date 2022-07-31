@@ -10,7 +10,8 @@ Each item below represents one type of test to run (using ours and some
 existing algorithms): 
     
 
-* *Scalability* (incl. Golem): varying `d` in {100,..., 2000}, fix other problem parameters  
+* *Scalability* (incl. Golem): varying `d` in {100,..., 2000}, fix other problem parameters. 
+  See `./exp_1_golem.py`. 
 
 * *Sparsity of `B_true`* (incl. Golem): varying `deg` between 0.5 and 2, fix other problem parameters. 
 
