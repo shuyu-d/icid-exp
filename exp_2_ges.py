@@ -38,27 +38,19 @@ if __name__ == '__main__':
         os.makedirs(FDIR)
     # Generate input parameters
     ds            = np.array([25,50,75,100])
-    degs          = np.linspace(1.2,2.0,5) # 0.5
-    graph_types   = ['ER']
-    sem_types     = ['gauss']
-    R_N2D         = 10
-    # n = 8*ds  # to be updated later (depending on d) on the fly
+    degs          = np.linspace(0.2,2.0,10)
+    graph_types   = ['ER']      # ['ER', 'SF']
+    sem_types     = ['gauss']   # ['gauss', 'gumbel', 'exp']
+    R_N2D         = 10          # ratio of n/d, used below to define n
     #
     pbs_l, pbs = gen_list_settings(d=ds, degs=degs, \
                                  graph_types=graph_types, \
                                  sem_types=sem_types)
 
-    # Parameters of ICID algorithm
-    opts={'k':              [25], \
-          'lambda_1':       [1e-1, 4e-1], \
-          'idec_lambda1':   [1e-1]}
-    l_o, df_o = gen_list_optparams(opts)
-    print('List of opt parameters to tets are:')
-    print(df_o)
-
     # Methods to run
+    # NOTE: Modify here to control which methods to run
     ms = {'icid': False, \
-          'ges':  False}
+            'ges':  False}
     ni = len(sys.argv)
     for i in range(ni):
         ms[sys.argv[i]] = True
@@ -77,6 +69,13 @@ if __name__ == '__main__':
                                 seed = 1)
         #----------- ICID ------------
         if ms['icid']:
+            # Parameters of ICID algorithm
+            opts={'k':              [25], \
+                  'lambda_1':       [1e-1, 4e-1], \
+                  'idec_lambda1':   [1e-1]}
+            l_o, df_o = gen_list_optparams(opts)
+            print('List of opt parameters to tets are:')
+            print(df_o)
             # Iterate through all optimization parameter configs
             for j in range(len(df_o)):
                 acc, ith = test_save_res_icid(Wtrue, X, \
