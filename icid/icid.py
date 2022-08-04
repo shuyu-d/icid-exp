@@ -15,6 +15,8 @@ For the ID problem, phi(B) = (1/s)(I-B)(I-B)' is a quadratic matrix function of 
 Contact: shuyu.dong@inria.fr
 """
 
+import sys
+sys.path.append("..")
 
 import numpy as np
 from timeit import default_timer as timer
@@ -24,7 +26,8 @@ from scipy.sparse.linalg import expm
 from icid import utils
 from icid.Loram import LoramProxDAG
 from icid.SparseMatDecomp import SparseMatDecomp
-from sklearn.covariance import GraphLassoCV, GraphLasso
+from sklearn.covariance import GraphicalLassoCV, GraphicalLasso
+from external.pyquic.py_quic_w import quic
 
 
 
@@ -199,7 +202,19 @@ def run_icid(X, lambda_1=1e-1, idec_lambda1=1e-1, \
                 sigma_0=1.0, k=25, \
                 beta_2 = 0.7, tol_prec=1e-1, \
                 gamma_2=1.0, maxit_prox_inner=500, \
-                W_true=None):
+                W_true=None, opt_ic='sk'):
+    def sp_ice_quic(X):
+        # --------------- QUIC
+        n_samples, d = X.shape
+        X = X - np.mean(X, axis=0, keepdims=True)
+        print("IC using QUIC.. ")
+        emp_cov = np.dot(X.T, X) / n_samples
+        #       Run in "path" mode
+        #       path = np.array([1.0, 0.9, 0.8, 0.7, 0.6, 0.5 ])
+        # path = np.linspace(1.0, 0.1, 4)
+        XP, WP, optP, cputimeP, iterP, dGapP = quic(S=emp_cov, \
+                L=float(lambda_1), mode="default", tol=1e-16, max_iter=100, msg=1)
+        return XP # [0,:].reshape([d, d])
     def sp_ice_naive(X):
         n_samples = X.shape[0]
         # Estimate the covariance and sparse inverse covariance
@@ -214,11 +229,14 @@ def run_icid(X, lambda_1=1e-1, idec_lambda1=1e-1, \
         prec_off[abs(prec_off) < lambda_1 * cmax] = 0
         prec_sp = prec_off + np.diag(np.diag(prec_))
         return prec_sp, cov_
+    def sp_ic_ideal(X):
+        d = X.shape[1]
+        return (np.eye(d)-W_true) @ (np.eye(d)-W_true).T  / sigma_0
     def sp_ice_sklearn(X):
         n_samples = X.shape[0]
         # Estimate the covariance and sparse inverse covariance
         X = X - np.mean(X, axis=0, keepdims=True)
-        model = GraphLasso(alpha=lambda_1)
+        model = GraphicalLasso(alpha=lambda_1)
         try:
             model.fit(X)
             cov_ = model.covariance_
@@ -230,15 +248,22 @@ def run_icid(X, lambda_1=1e-1, idec_lambda1=1e-1, \
         return prec_, cov_, model
     res = []
     # Inverse covariance estimation
-    t0 = timer()
-    prec_est, cov_est, model = sp_ice_sklearn(X)
-    # prec_est, cov_est = sp_ice_naive(X, tau=tol_prec)
+    if opt_ic is 'sk':
+        t0 = timer()
+        prec_est, cov_est, model = sp_ice_sklearn(X)
+    elif opt_ic is 'quic':
+        # ----QUIC
+        t0 = timer()
+        prec_est = sp_ice_quic(X)
+    else:
+        # ----ideal
+        t0 = timer()
+        prec_est = sp_ic_ideal(X)
+    # ----naive inversion
+    # prec_est, cov_ = sp_ice_naive(X)
+    # ----------
     tg = timer() - t0
-    # -----
-    d = X.shape[1]
-    P_true  = (np.eye(d)-W_true) @ (np.eye(d)-W_true).T  / sigma_0
-    Prec_input = P_true
-    # Prec_input = prec_est
+    Prec_input = prec_est
     acc = utils.count_accuracy((W_true)!=0, Prec_input !=0)
     print(acc)
     stats = {'niter': -1,

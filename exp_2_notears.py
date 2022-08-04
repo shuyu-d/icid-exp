@@ -38,7 +38,7 @@ if __name__ == '__main__':
         os.makedirs(FDIR)
     # Generate input parameters
     ds            = np.array([25,50,75,100,200,300,400])
-    degs          = np.linspace(0.2,1.0,5) # 0.5
+    degs          = np.linspace(1.2,2.0,5) # 0.5
     graph_types   = ['ER']
     sem_types     = ['gauss']
     R_N2D         = 10

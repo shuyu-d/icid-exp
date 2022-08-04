@@ -1,20 +1,22 @@
 import numpy as np
 from icid import utils
 from icid.icid import run_icid
-
+import time, os
+import pandas as pd
 
 # Generate graph and data
-d            = 200
+d            = 100
 k            = 20
-deg          = 1.0 # 0.5
+deg          = 0.5 # 0.5
 graph_type   = 'ER'
 sem_type     = 'gauss'
 #
-n = 8*d
+n = 10*d
 s0 = int(deg*d)
 print('d=%d | #nonzeros=%d | graph type is: %s' \
             %(d,s0,graph_type))
 
+utils.set_random_seed(2)
 B_true = utils.simulate_dag(d, s0, graph_type)
 if graph_type is 'SF':
     # In the case of scale-free (SF) graphs, hubs are mostly
@@ -24,7 +26,7 @@ W_true = utils.simulate_parameter(B_true)
 X = utils.simulate_linear_sem(W_true, n, sem_type)
 
 # Parameters of icid algorithm
-lambda_1, idec_lambda1 = 6e-1, 1e-1
+lambda_1, idec_lambda1 = 4e-1, 1e-1
 
 # Run ICID
 print('-------Ready to run ICD-LoRAM-Altmin---')
@@ -40,6 +42,7 @@ W_icd, ith_icd  = run_icid(X, lambda_1=lambda_1,
 acc = utils.count_accuracy(B_true, W_icd != 0)
 print(acc)
 
+
 # --------------------
 # Example settings for deg and lambda_1's:
 #
@@ -47,4 +50,12 @@ print(acc)
 #  (deg: 1.0, lambda_1: 6e-1, idec-lambda_1: 1e-1)
 #  (deg: 2, lambda_1: 5e-1, idec-lambda_1: 1e-1)
 # --------------------
+
+# tempo
+
+timestr = time.strftime("%H%M%S%m%d")
+FDIR = 'outputs/demo_%s' % timestr
+if not os.path.exists(FDIR):
+    os.makedirs(FDIR)
+pd.DataFrame(ith_icd).to_csv('%s/ith_icid.csv' % FDIR)
 

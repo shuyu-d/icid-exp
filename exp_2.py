@@ -14,6 +14,7 @@ import ges
 
 def test_save_res_icid(W_true, X, k=25, \
                        optp1=2e-1, optp2=1e-1, \
+                       opt_ic='sk', \
                        tid=None, fdir='outputs/exp0_'):
     if not os.path.exists(fdir):
         os.makedirs(fdir)
@@ -23,6 +24,7 @@ def test_save_res_icid(W_true, X, k=25, \
                               lambda_1=optp1, \
                               idec_lambda1=optp2, \
                               beta_2 = 0.7, gamma_2=1.0, \
+                              opt_ic=opt_ic, \
                               maxit_prox_inner=500, W_true=W_true)
     """ Evaluations and record results """
     acc = utils.count_accuracy(W_true!=0, W_icd!=0)
@@ -37,8 +39,8 @@ if __name__ == '__main__':
     if not os.path.exists(FDIR):
         os.makedirs(FDIR)
     # Generate input parameters
-    ds            = np.array([25,50,75,100,200,300,400])
-    degs          = np.linspace(0.2,1.0,5) # 0.5
+    ds            = np.array([25,50,75,100,200,300,400,500])
+    degs          = np.linspace(0.2,2.0,10) # 0.5
     graph_types   = ['ER']
     sem_types     = ['gauss']
     R_N2D         = 10
@@ -49,9 +51,8 @@ if __name__ == '__main__':
                                  sem_types=sem_types)
 
     # Methods to run
-    ms = {'icid':   False, \
-          'ges':    False,\
-          'notears':False}
+    ms = {'icid': False, \
+          'ges':  False}
     ni = len(sys.argv)
     for i in range(ni):
         ms[sys.argv[i]] = True
@@ -71,7 +72,8 @@ if __name__ == '__main__':
         #----------- ICID ------------
         if ms['icid']:
             # Parameters of ICID algorithm
-            opts={'k':              [25], \
+            opts={'opt_ic':         ['ideal'], \
+                  'k':              [25], \
                   'lambda_1':       [1e-1, 4e-1], \
                   'idec_lambda1':   [1e-1]}
             l_o, df_o = gen_list_optparams(opts)
@@ -83,6 +85,7 @@ if __name__ == '__main__':
                                     k    =df_o['k'][j], \
                                     optp1=df_o['lambda_1'][j] , \
                                     optp2=df_o['idec_lambda1'][j] , \
+                                    opt_ic=df_o['opt_ic'][j],\
                                     tid='pb%dopt%d' %(i+1,j+1), \
                                     fdir=FDIR)
                 print(acc)
@@ -93,43 +96,13 @@ if __name__ == '__main__':
                             'graph_type'  : pbs['graph_type'][i],\
                             'sem_type'    : pbs['sem_type'][i], \
                             'k'           : df_o['k'][j], \
+                            'opt_ic'      : df_o['opt_ic'][j], \
                             'lambda_1'    : df_o['lambda_1'][j], \
                         'idec_lambda1'    : df_o['idec_lambda1'][j], \
                         'shd':acc['shd'], 'tpr':acc['tpr'], \
                         'fdr':acc['fdr'], 'fpr':acc['fpr'], \
                         'nnz':acc['nnz'], 'time': ith.iloc[-1]['time']}
                     )
-                pd.DataFrame(res, columns=res[0].keys()).to_csv('%s/res_all.csv' %FDIR)
-        #-------- NOTEARS ----------------
-        if ms['notears']:
-            # Parameters
-            opts={'lambda_1':       [1e-1, 4e-1]}
-            l_o, df_o = gen_list_optparams(opts)
-            print('List of opt parameters to tets are:')
-            print(df_o)
-            # Iterate through all optimization parameter configs
-            for j in range(len(df_o)):
-                print('-------Ready to run NOTEARS ----------')
-                t0 = timer()
-                # w_notears, _ = NOTEARS
-                W_no, ith_no = notears_linear(X, \
-                                        lambda1=df_o['lambda_1'][j], \
-                                        loss_type='l2', Wtrue=Wtrue)
-                t_no = timer() - t0
-                acc_no = utils.count_accuracy(Wtrue!=0, W_no!=0)
-                print(acc_no)
-                res.append({'alg':'NOTEARS',
-                            'd'           : pbs['d'][i], \
-                            'deg'         : pbs['deg'][i], \
-                            'n'           : pbs['n'][i], \
-                            'graph_type'  : pbs['graph_type'][i],\
-                            'sem_type'    : pbs['sem_type'][i], \
-                            'shd':acc_no['shd'], 'tpr':acc_no['tpr'], \
-                            'fdr':acc_no['fdr'], 'fpr':acc_no['fpr'], \
-                            'nnz':acc_no['nnz'], \
-                            'time': ith_no[-1]['time']}
-                        )
-                pd.DataFrame(ith_no).to_csv('%s/pb%dopt%d_ith_notears.csv' %(FDIR, i+1,j+1))
                 pd.DataFrame(res, columns=res[0].keys()).to_csv('%s/res_all.csv' %FDIR)
         #-------- GES ----------------
         if ms['ges']:

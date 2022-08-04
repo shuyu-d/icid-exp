@@ -9,10 +9,7 @@ import shutil
 from aux.gen_settings import gen_list_settings, gen_list_optparams, gen_data_sem
 from icid import utils
 from icid.icid import run_icid, AMA_independece_decomp
-from external.test_linear import notears_linear
 
-from sklearn.covariance import GraphLassoCV, GraphLasso
-from sklearn.metrics import  confusion_matrix, classification_report
 
 def test_save_res_icid(W_true, X, k=25, \
                        optp1=2e-1, optp2=1e-1, \
@@ -26,12 +23,12 @@ def test_save_res_icid(W_true, X, k=25, \
                               idec_lambda1=optp2, \
                               beta_2 = 0.7, gamma_2=1.0, \
                               maxit_prox_inner=500, W_true=W_true)
-    """ Evaluations and record results """
-    acc = utils.count_accuracy(W_true!=0, W_icd!=0)
+    # """ Evaluations and record results """
+    # acc = utils.count_accuracy(W_true!=0, W_icd!=0)
     """ SAVE RESULTS """
     pd.DataFrame(ith_icd).to_csv('%s/%s_ith_icid.csv'\
                                     %(fdir, tid))
-    return acc, ith_icd
+    return W_icd, ith_icd
 
 if __name__ == '__main__':
     timestr = time.strftime("%H%M%S%m%d")
@@ -40,7 +37,7 @@ if __name__ == '__main__':
         os.makedirs(FDIR)
     # Generate input parameters
     ds            = np.array([100, 200, 400, 600, 800, 1000, 2000, 3000])
-    degs          = [0.5, 1.0, 2.0] # 0.5
+    degs          = [0.5, 1.0] # 0.5
     graph_types   = ['ER']
     sem_types     = ['gauss']
     # n = 5*ds  # to be updated later (depending on d) on the fly
@@ -72,17 +69,17 @@ if __name__ == '__main__':
         print('Graph and SCM data generated.\n')
         # Iterate through all optimization parameter configs
         for j in range(len(df_o)):
-            # acc, ith = test_save_res_icid(Wtrue, X, \
-            #                     k    =df_o['k'][j], \
-            #                     optp1=df_o['lambda_1'][j] , \
-            #                     optp2=df_o['idec_lambda1'][j] , \
-            #                     tid='pb%dopt%d' %(i+1,j+1), \
-            #                     fdir=FDIR)
-            # acc = utils.count_accuracy(W_true!=0, W_icd!=0)
-            # runtime = ith.iloc[-1]['time']
-            acc = {'shd':np.nan, 'tpr':np.nan, 'fdr':np.nan,\
-                    'fpr':np.nan, 'nnz':np.nan}
-            runtime = np.nan
+            W_icd, ith = test_save_res_icid(Wtrue, X, \
+                                k    =df_o['k'][j], \
+                                optp1=df_o['lambda_1'][j] , \
+                                optp2=df_o['idec_lambda1'][j] , \
+                                tid='pb%dopt%d' %(i+1,j+1), \
+                                fdir=FDIR)
+            acc = utils.count_accuracy(Wtrue!=0, W_icd!=0)
+            runtime = ith.iloc[-1]['time']
+            # acc = {'shd':np.nan, 'tpr':np.nan, 'fdr':np.nan,\
+            #         'fpr':np.nan, 'nnz':np.nan}
+            # runtime = np.nan
             # Record results
             res.append({'alg':'ICID',
                         'd'           : pbs['d'][i], \
@@ -99,5 +96,8 @@ if __name__ == '__main__':
                 )
     # Save results to file
     pd.DataFrame(res, columns=res[0].keys()).to_csv('%s/res_all.csv' %FDIR)
+    endstr = time.strftime("%H%M%S%m%d")
+    pd.DataFrame(res, columns=res[0].keys()).to_csv('%s/resall_%s.csv' %(FDIR,endstr))
+
 
 

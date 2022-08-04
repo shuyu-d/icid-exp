@@ -37,8 +37,8 @@ if __name__ == '__main__':
     if not os.path.exists(FDIR):
         os.makedirs(FDIR)
     # Generate input parameters
-    ds            = np.array([25,50,75,100,200,300,400])
-    degs          = np.linspace(0.2,1.0,5) # 0.5
+    ds            = np.array([25,50,75,100])
+    degs          = np.linspace(1.2,2.0,5) # 0.5
     graph_types   = ['ER']
     sem_types     = ['gauss']
     R_N2D         = 10
@@ -48,10 +48,17 @@ if __name__ == '__main__':
                                  graph_types=graph_types, \
                                  sem_types=sem_types)
 
+    # Parameters of ICID algorithm
+    opts={'k':              [25], \
+          'lambda_1':       [1e-1, 4e-1], \
+          'idec_lambda1':   [1e-1]}
+    l_o, df_o = gen_list_optparams(opts)
+    print('List of opt parameters to tets are:')
+    print(df_o)
+
     # Methods to run
-    ms = {'icid':   False, \
-          'ges':    False,\
-          'notears':False}
+    ms = {'icid': False, \
+          'ges':  False}
     ni = len(sys.argv)
     for i in range(ni):
         ms[sys.argv[i]] = True
@@ -70,13 +77,6 @@ if __name__ == '__main__':
                                 seed = 1)
         #----------- ICID ------------
         if ms['icid']:
-            # Parameters of ICID algorithm
-            opts={'k':              [25], \
-                  'lambda_1':       [1e-1, 4e-1], \
-                  'idec_lambda1':   [1e-1]}
-            l_o, df_o = gen_list_optparams(opts)
-            print('List of opt parameters to tets are:')
-            print(df_o)
             # Iterate through all optimization parameter configs
             for j in range(len(df_o)):
                 acc, ith = test_save_res_icid(Wtrue, X, \
@@ -99,37 +99,6 @@ if __name__ == '__main__':
                         'fdr':acc['fdr'], 'fpr':acc['fpr'], \
                         'nnz':acc['nnz'], 'time': ith.iloc[-1]['time']}
                     )
-                pd.DataFrame(res, columns=res[0].keys()).to_csv('%s/res_all.csv' %FDIR)
-        #-------- NOTEARS ----------------
-        if ms['notears']:
-            # Parameters
-            opts={'lambda_1':       [1e-1, 4e-1]}
-            l_o, df_o = gen_list_optparams(opts)
-            print('List of opt parameters to tets are:')
-            print(df_o)
-            # Iterate through all optimization parameter configs
-            for j in range(len(df_o)):
-                print('-------Ready to run NOTEARS ----------')
-                t0 = timer()
-                # w_notears, _ = NOTEARS
-                W_no, ith_no = notears_linear(X, \
-                                        lambda1=df_o['lambda_1'][j], \
-                                        loss_type='l2', Wtrue=Wtrue)
-                t_no = timer() - t0
-                acc_no = utils.count_accuracy(Wtrue!=0, W_no!=0)
-                print(acc_no)
-                res.append({'alg':'NOTEARS',
-                            'd'           : pbs['d'][i], \
-                            'deg'         : pbs['deg'][i], \
-                            'n'           : pbs['n'][i], \
-                            'graph_type'  : pbs['graph_type'][i],\
-                            'sem_type'    : pbs['sem_type'][i], \
-                            'shd':acc_no['shd'], 'tpr':acc_no['tpr'], \
-                            'fdr':acc_no['fdr'], 'fpr':acc_no['fpr'], \
-                            'nnz':acc_no['nnz'], \
-                            'time': ith_no[-1]['time']}
-                        )
-                pd.DataFrame(ith_no).to_csv('%s/pb%dopt%d_ith_notears.csv' %(FDIR, i+1,j+1))
                 pd.DataFrame(res, columns=res[0].keys()).to_csv('%s/res_all.csv' %FDIR)
         #-------- GES ----------------
         if ms['ges']:

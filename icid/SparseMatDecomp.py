@@ -135,20 +135,20 @@ class SparseMatDecomp():
     def solver_fista_linesearch(self, w0, ls_c1=0.8, ls_beta=0.5, verbo=2):
         y = w0
         x = y
-        t1 = 0
-        stats, _ = self._iter_comp_stats(x, t1)
+        stats, _ = self._iter_comp_stats(x, 0)
         iterh    = []
         iterh.append(stats.copy())
         fold = stats['fobj']
         ss = self.lipschitz_loss / 100
         for i in range(self.maxiter):
-            ti = timer()
+            t0 = timer()
             xold = x
             yplus, ss, loss, Gt, lsinfo = self.gd_f_linesearch(y, s0=ss, c1=ls_c1, beta=ls_beta)
             x = pywt.threshold(yplus, ss*self.lambda1, 'soft')
             y = x + i * (x - xold) / (i+3)
-            t1 += timer() - ti
-            stats, _ = self._iter_comp_stats(x, t1, stepsize=ss,ls_info=lsinfo)
+            ti = timer() - t0
+            stats, _ = self._iter_comp_stats(x, ti, \
+                            stats=stats, stepsize=ss,ls_info=lsinfo)
             iterh.append(stats.copy())
             fval = stats['fobj']
             msg_line = 'iter: %d | f: %.7e | loss: %.2e | ss: %.2e | nnz: %d | sp: %.2e | gloss: %.2e | optima: %.2e | time: %.2e' %(i+1, stats['fobj'], stats['loss'], stats['stepsize'], stats['nnz'], stats['sp'], stats['gradnorm'], stats['optimality'], stats['time'])
