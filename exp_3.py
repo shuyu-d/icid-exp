@@ -36,7 +36,7 @@ def test_save_res_icid(W_true, X, k=25, \
 
 if __name__ == '__main__':
     timestr = time.strftime("%H%M%S%m%d")
-    FDIR = 'outputs/exp2_%s' % timestr
+    FDIR = 'outputs/exp3_%s' % timestr
     if not os.path.exists(FDIR):
         os.makedirs(FDIR)
     # Generate input parameters
