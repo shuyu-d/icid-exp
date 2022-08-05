@@ -10,12 +10,12 @@ def gen_list_settings(graph_types=None, sem_types=None, degs=[1.0], d=[100], n=[
     if sem_types is None:
         sem_types = ['gauss']
 
-    l_p = list(itertools.product(graph_types, \
+    l_p = list(itertools.product(d, graph_types, \
                              sem_types, \
-                             degs, d, n))
-    df_p = pd.DataFrame(l_p, columns=['graph_type',\
+                             degs, n))
+    df_p = pd.DataFrame(l_p, columns=['d','graph_type',\
                                         'sem_type', \
-                                        'deg', 'd','n'])
+                                        'deg', 'n'])
     return l_p, df_p
 
 def gen_list_optparams(opts=None):
