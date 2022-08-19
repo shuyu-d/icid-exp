@@ -5,12 +5,10 @@ This function is adapted from scipy.linalg.expm_multiply, which is based on the
 algorithm 3.2 of Al-Mohy and Higham (2011).
 
 This is an implementation of algorithms in the paper:
-Dong, S. & Sebag, M. (2022). From graphs to DAGs: a low-complexity model and a scalable algorithm.
-URL https://arxiv.org/abs/2204.04644.
 
-URL of the package Loram is https://github.com/shuyu-d/loram-exp.
+URL of the package
 
-Contact: shuyu.dong@m4x.org
+Contact:
 """
 
 

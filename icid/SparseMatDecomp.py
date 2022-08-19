@@ -9,7 +9,7 @@ and phi(B) = (1/s)(I-B) (I-B)' is a quadratic matrix function of B.
 This is part of the ICID algorithm for high-dimensional causal discovery
 from inverse covariance matrices.
 
-Contact: shuyu.dong@inria.fr
+Contact:
 """
 
 import numpy as np

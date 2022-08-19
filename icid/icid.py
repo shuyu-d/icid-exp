@@ -12,7 +12,7 @@ following two consecutive steps:
 
 For the ID problem, phi(B) = (1/s)(I-B)(I-B)' is a quadratic matrix function of B.
 
-Contact: shuyu.dong@inria.fr
+Contact:
 """
 
 import sys

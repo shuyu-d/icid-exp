@@ -8,12 +8,11 @@ function h.
 
 Reference:
 
-[1]: Dong, S. & Sebag, M. (2022). From graphs to DAGs: a low-complexity model
-and a scalable algorithm. URL https://arxiv.org/abs/2204.04644.
+[1]:
 
-URL of the package Loram is https://github.com/shuyu-d/loram-exp.
+URL of the package
 
-Contact: shuyu.dong@inria.fr
+Contact:
 """
 
 import numpy as np
