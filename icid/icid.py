@@ -37,6 +37,7 @@ def AMA_independece_decomp(S, k=25, sigma_0=1.0, \
                           maxiter=20, maxit_2=20, \
                           maxit_prox_inner=500, \
                           tol_h = 1e-12, epsilon=1e-12, \
+                          idec_solver = 'fista', \
                           W_true=None, fdir=None, \
                           tid=None, fname=None):
     """
@@ -56,20 +57,16 @@ def AMA_independece_decomp(S, k=25, sigma_0=1.0, \
     def _average_explore(W, A, tau=0.7):
         # Average of W and A
         M = (1-tau)* W + tau*A
-        # # Sparsify M and renormalize it
-        # frobn = np.linalg.norm(M)
-        # M = _threshold_hard(M, tol=5e-2)
-        # frobt = np.linalg.norm(M)
-        # M *= frobn / frobt
         return M
-    def _threshold_hard(B, tol=5e-2):
+    def _threshold_hard_rel(B, tol=5e-2):
         c = max(abs(B.ravel()))
         B[abs(B)< tol*c] = 0
         return B
+    def _threshold_hard(B, tol=5e-2):
+        B[abs(B)< tol] = 0
+        return B
     def _stopp_proxdag(A, h_old):
-        # B = _threshold_hard(A, tol=5e-2)
         ht = _comp_h_plain(A) #
-        # return ((ht <= beta_2 * h_old) or (ht <= tol_h)), ht
         return ((ht <= beta_2 * h_old) ), ht
     def _stopp_criteria(B, stat=None, time=0, niter=0):
         val = False
@@ -125,7 +122,6 @@ def AMA_independece_decomp(S, k=25, sigma_0=1.0, \
         if verbo > 0:
             stat['hval'] = _comp_h_plain(B) #
         # optimality and gap
-        # stat['optimality'] = TODO
         if niter < 1:
             stat['gap'] = np.nan
         else:
@@ -137,30 +133,40 @@ def AMA_independece_decomp(S, k=25, sigma_0=1.0, \
             acc['nnz'], acc['shd'],acc['tpr'], \
             acc['fdr'],acc['fpr']
         if verbo > 1:
-            # print iter information every T iters
-            # if niter % print_period == 0:
             print('Iter: %i | f: %.4e | h: %.3e | gap: %.3e | t(sec): %.2e' \
                  % (niter, stat['fval'], stat['hval'], stat['gap'], stat['time']))
             print(acc)
         return stat
     d = S.shape[0]
+    iterh = []
     t0 = timer()
-    # pb = Proximal_GD(Prec=S, Wtrue=W_true, truegraph_istr=0)
-    # pb._update_info(lambda1=lambda_1, lambda2=1/sigma_0)
-    # TODO: replace 2 lines above by the following
+    # ---------------------------------------------------------
     pb = SparseMatDecomp(Prec=S, Wtrue=W_true, \
                            lambda1=lambda_1,\
-                           invsigma_0=1/sigma_0)
-    w0 = pb.initialize_w() #
+                           invsigma_0=1/sigma_0,\
+                           maxiter=30000)
+    w0 = pb.initialize_w(option='zeros') #
     tini = timer() - t0
-    # FISTA solver for ic-decomp
-    Wt, iterh = pb.solver_fista_linesearch(w0, verbo=1)
-    At = Wt
-    stat = _comp_iterhist(Wt, At, time=tini+iterh.iloc[-1]['time'],\
-                          subpb_name='ICD_init')
-    iterh = []
-    iterh.append(stat.copy())
+    if idec_solver == 'FISTA':
+        # FISTA solver for ic-decomp
+        Wt, idh = pb.solver_fista_linesearch(w0, verbo=1)
+        At = Wt
+        stat = _comp_iterhist(Wt, At, time=tini+idh.iloc[-1]['time'],\
+                              subpb_name='ICD_init-FISTA')
+        iterh.append(stat.copy())
+    elif idec_solver == 'BFGS':
+        # -------BFGS alternative
+        Wt, idh = pb.solver_bfgs(w0, verbo=1)
+        At = Wt
+        stat = _comp_iterhist(Wt, At, time=tini+idh.iloc[-1]['time'],\
+                              subpb_name='ICD_init-BFGS')
+        iterh.append(stat.copy())
+    else:
+        raise ValueError('solver %s not available' %idec_solver)
+    #---------------------------------------------------------
     h_old = np.Inf
+    At = Wt
+    DOSTOP_EXCEPTION = False
     for t in range(maxiter):
         # -- averaging and explore
         t0 = timer()
@@ -177,41 +183,46 @@ def AMA_independece_decomp(S, k=25, sigma_0=1.0, \
             print('---Fit proximal DAG matrix using LoRAM-AGD (trial %i/%i)...'\
                     % (j+1, maxit_2))
             pba = LoramProxDAG(Wt/c0, k)
-            ith2, x_sol = pba.run_projdag(alpha=gamma_2, maxiter=maxit_prox_inner)
-            A, Sca = pba.get_adjmatrix_dense(x_sol) # a dense np matrix
-            At = A * c0
-            t2 += ith2.iloc[-1]['time']
-            Att = _threshold_hard(At, tol=1e-2)
-            dostop_h, ht = _stopp_proxdag(Att, h_old)
-            if dostop_h:
-                # h_old = ht
+            try:
+                ith2, x_sol = pba.run_projdag(alpha=gamma_2,\
+                                      maxiter=maxit_prox_inner)
+                A, Sca = pba.get_adjmatrix_dense(x_sol) # a dense np matrix
+                At = A * c0
+                t2 += ith2.iloc[-1]['time']
+
+                Att = _threshold_hard(At, tol=2e-1)
+                dostop_h, ht = _stopp_proxdag(Att, h_old)
+                if dostop_h:
+                    break
+                else:
+                    gamma_2 = gamma_2 * 3
+            except (ZeroDivisionError, ValueError, OverflowError):
+                print('///// AMA of ICID terminate with exception from LoRAM\n')
+                DOSTOP_EXCEPTION = True
                 break
-            else:
-                gamma_2 = gamma_2 * 5
         stat = _comp_iterhist(Wt, At, stat=stat, time=t2, niter=t+1,\
                         subpb_name='proxDAG')
         iterh.append(stat.copy())
         dostop_all = _stopp_criteria(At, stat=stat, niter=t+1, time=ti)
-        if dostop_all:
-            At = _threshold_hard(At, tol=3e-2)
+        if dostop_all or DOSTOP_EXCEPTION:
+            At = _threshold_hard(At, tol=1e-2)
             break
-    return At, pd.DataFrame(iterh, columns=iterh[0].keys())
+    return At, pd.DataFrame(iterh, columns=iterh[0].keys()), idh
 
 
 def run_icid(X, lambda_1=1e-1, idec_lambda1=1e-1, \
                 sigma_0=1.0, k=25, \
-                beta_2 = 0.7, tol_prec=1e-1, \
+                beta_2 = 0.7, \
                 gamma_2=1.0, maxit_prox_inner=500, \
-                W_true=None, opt_ic='sk'):
+                W_true=None, opt_ic='sk',\
+                idec_solver='fista' \
+            ):
     def sp_ice_quic(X):
         # --------------- QUIC
         n_samples, d = X.shape
         X = X - np.mean(X, axis=0, keepdims=True)
         print("IC using QUIC.. ")
         emp_cov = np.dot(X.T, X) / n_samples
-        #       Run in "path" mode
-        #       path = np.array([1.0, 0.9, 0.8, 0.7, 0.6, 0.5 ])
-        # path = np.linspace(1.0, 0.1, 4)
         XP, WP, optP, cputimeP, iterP, dGapP = quic(S=emp_cov, \
                 L=float(lambda_1), mode="default", tol=1e-16, max_iter=100, msg=1)
         return XP # [0,:].reshape([d, d])
@@ -226,6 +237,7 @@ def run_icid(X, lambda_1=1e-1, idec_lambda1=1e-1, \
         prec_off = prec_.copy()
         prec_off = prec_off - np.diag(np.diag(prec_off))
         cmax = max(abs(prec_off.ravel()))
+        print('lam is %.3e' %lambda_1)
         prec_off[abs(prec_off) < lambda_1 * cmax] = 0
         prec_sp = prec_off + np.diag(np.diag(prec_))
         return prec_sp, cov_
@@ -242,33 +254,46 @@ def run_icid(X, lambda_1=1e-1, idec_lambda1=1e-1, \
             cov_ = model.covariance_
             prec_ = model.precision_
         except FloatingPointError:
-            print("Oops!  Alpha value not working for glasso (sklearn).. ")
+            print("Alpha value not working for glasso (sklearn).. ")
             model = []
             prec_, cov_ = sp_ice_naive(X)
         return prec_, cov_, model
     res = []
+    if (opt_ic != 'emp_gs') and (not np.isscalar(lambda_1)):
+        lambda_1 = lambda_1[0]
     # Inverse covariance estimation
     if opt_ic is 'sk':
         t0 = timer()
         prec_est, cov_est, model = sp_ice_sklearn(X)
+        tg = timer() - t0
     elif opt_ic is 'quic':
         # ----QUIC
         t0 = timer()
         prec_est = sp_ice_quic(X)
+        tg = timer() - t0
+    elif opt_ic is 'emp':
+        print('lambda_1 being used is %.2f' %lambda_1)
+        t0 = timer()
+        prec_est, cov_est = sp_ice_naive(X)
+        tg = timer() - t0
+    elif opt_ic is 'emp_gs':
+        if np.isscalar(lambda_1):
+            prec_est, lambda_1, _, _, tg = ice_sparse_empirical(X)
+        else:
+            prec_est, lambda_1, _, _, tg = ice_sparse_empirical(X, lams=lambda_1)
+        print('lambda_1 chosen by emp-gs is %.3e'% lambda_1)
     else:
         # ----ideal
         t0 = timer()
         prec_est = sp_ic_ideal(X)
-    # ----naive inversion
-    # prec_est, cov_ = sp_ice_naive(X)
+        tg = timer() - t0
     # ----------
-    tg = timer() - t0
     Prec_input = prec_est
     acc = utils.count_accuracy((W_true)!=0, Prec_input !=0)
     print(acc)
     stats = {'niter': -1,
             'time': tg,
-            'subpb_name': 'Prec',
+            'subpb_name': 'IDecomp',
             'fval': np.nan,\
             'hval': np.nan,\
             'F': np.nan,\
@@ -285,14 +310,87 @@ def run_icid(X, lambda_1=1e-1, idec_lambda1=1e-1, \
     res.append(stats.copy())
     res = pd.DataFrame(res, columns=res[0].keys())
     # ICDecomp and Loram-AltMin
-    # TODO: lambda_1 below should be 0 instead of 1e-1
-    wnew, iterh = AMA_independece_decomp(Prec_input, k=k, \
+    wnew, iterh, idh = AMA_independece_decomp(Prec_input, k=k, \
                                     W_true = W_true, sigma_0=sigma_0,\
                                     lambda_1=idec_lambda1, \
                                     beta_2=beta_2, gamma_2=gamma_2, \
                                     maxit_prox_inner=maxit_prox_inner,\
+                                    idec_solver=idec_solver,\
                                     epsilon=1e-2)
     iterh['time'] += tg
     res = pd.concat([res, iterh])
-    return wnew, res
+    return wnew, res, idh
+
+# Auxilary functions
+
+# Sparse empirical
+def ice_sparse_empirical(X, \
+        lams = np.linspace(4e-2,1e-1,10)):
+    def _comp_ice_stats(prec, cov):
+        error_emp = np.linalg.norm(emp_cov - cov, ord="fro")
+        nnz = (prec!=0).sum()
+        return error_emp, nnz
+    def _criterion_trace(prec):
+        prec_ = prec + np.diag(9e-1*np.diag(prec))
+        f = (prec * emp_cov).sum() - np.log(np.linalg.det(prec_))
+        # f = (prec * emp_cov).sum()
+        return f
+    def _selection(err_emps, fs, nnzs):
+        N = len(err_emps) //2
+        c1 = np.argsort(err_emps.values)[:N]
+        c2 = np.argsort(fs.values)[:N]
+        # Find the most sparse one among c2
+        nnzvals = nnzs.values[c2]
+        isel = np.argsort(nnzs.values[c2])[N//2]
+        sel = c2[isel]
+        return c1,c2, nnzvals, sel
+
+    def _comp_sparse_ic(X, lambda_1):
+        # Sparsify empirical precision matrix
+        prec_ = np.linalg.inv(emp_cov)
+        prec_off = prec_.copy()
+        prec_off = prec_off - np.diag(np.diag(prec_off))
+        cmax = max(abs(prec_off.ravel()))
+        #
+        prec_off[abs(prec_off) < lambda_1 * cmax] = 0
+        #
+        prec_sp = prec_off + np.diag(np.diag(prec_))
+        cov_o = np.linalg.inv(prec_sp)
+        return prec_sp, cov_o
+    n_samples, d = X.shape
+    X = X - np.mean(X, axis=0, keepdims=True)
+    emp_cov = np.dot(X.T, X) / n_samples
+    j = 0
+    results = []
+    precs =[]
+    for lam in lams:
+        j +=1
+        name = "Sparse Empirical %d" % j
+        start_time = timer()
+        prec, cov = _comp_sparse_ic(emp_cov, lam)
+        ctime = timer() - start_time
+        err_emp, nnz = _comp_ice_stats(prec, cov)
+        f = _criterion_trace(prec)
+        precs.append(prec.ravel())
+        results.append([name, err_emp, f, nnz, ctime, lam])
+
+    _res=pd.DataFrame(results,
+                 columns=[
+                    "Estimator",
+                    "Error (w Emp Cov)",
+                    "Fit function",
+                    "nnz (Prec)",
+                    "Time",
+                    "Lambda"]
+                 )
+    c1,c2,c3,sel = _selection(
+            _res['Error (w Emp Cov)'],\
+            _res['Fit function'], \
+            _res['nnz (Prec)']
+            )
+    pd.set_option('display.max_columns', None)
+    print("=======Lambda selected vs Argmin SuppDiff(wrt true Prec)=====")
+    print(_res.iloc[sel])
+    print("============\n")
+    return precs[sel].reshape([d,d]), _res['Lambda'][sel], _res, sel, _res['Time'].values.sum()
 

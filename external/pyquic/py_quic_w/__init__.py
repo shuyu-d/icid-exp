@@ -1,4 +1,4 @@
-from . import py_quic
+import py_quic
 import numpy as np
 import sys
 

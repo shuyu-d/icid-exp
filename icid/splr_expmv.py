@@ -648,7 +648,10 @@ def _compute_cost_div_m(m, p, norm_info):
         Required number of matrix products divided by m.
 
     """
-    return int(np.ceil(norm_info.alpha(p) / _theta[m]))
+    val = norm_info.alpha(p) / _theta[m]
+    #if np.isnan(val) or (not np.isfinite(val)):
+    #    val = 2.0
+    return int(np.ceil(val))
 
 
 def _compute_p_max(m_max):
