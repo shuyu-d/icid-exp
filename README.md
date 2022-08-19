@@ -35,6 +35,7 @@ For the ID problem, phi(B) = (1/s)(I-B)(I-B)' is a quadratic matrix function of 
 ```bash
 $ cd icid-exp/
 $ make 
-$ python demo_icid.py
+$ python exp_2f.py icid # run ICID
+$ python exp_2f.py ideal # run O-ICID
 ```
 

@@ -37,7 +37,7 @@ def AMA_independece_decomp(S, k=25, sigma_0=1.0, \
                           maxiter=20, maxit_2=20, \
                           maxit_prox_inner=500, \
                           tol_h = 1e-12, epsilon=1e-12, \
-                          idec_solver = 'fista', \
+                          idec_solver = 'FISTA', \
                           W_true=None, fdir=None, \
                           tid=None, fname=None):
     """
@@ -215,7 +215,7 @@ def run_icid(X, lambda_1=1e-1, idec_lambda1=1e-1, \
                 beta_2 = 0.7, \
                 gamma_2=1.0, maxit_prox_inner=500, \
                 W_true=None, opt_ic='sk',\
-                idec_solver='fista' \
+                idec_solver='FISTA' \
             ):
     def sp_ice_quic(X):
         # --------------- QUIC

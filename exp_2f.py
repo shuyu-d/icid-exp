@@ -17,8 +17,8 @@ if __name__ == '__main__':
     FDIR = 'outputs/exp2f_%s' % timestr
     # Generate input parameters
     ds            = np.array([50,200]) #x5  #,300,400,500])
-    degs          = [1] #[4, 2, 1] #x3 # 0.5
-    graph_types   = ['ER'] #'SF']
+    degs          = [1] #
+    graph_types   = ['ER'] #'SF'
     sem_types     = ['gauss'] #['gauss','exp'] # x2
     R_N2D         = 32
     #
