@@ -242,8 +242,8 @@ class Loram():
         ti = timer() - t0
 
         iterhist = []
-        self.stat = self._comp_iterhist(x_old, time=ti, niter=0, alpha=alpha)
-        iterhist.append(self.stat.copy())
+        stat = self._comp_iterhist(x_old, time=ti, niter=0, alpha=alpha)
+        iterhist.append(stat.copy())
 
         for i in range(self.maxiter):
             t0 = timer()
@@ -265,25 +265,22 @@ class Loram():
                                     self.lin_comb(1, x_new, -1, x_old))
             ti = timer() - t0
             # Get iter stats
-            if (i+1) % 50 == 0: #or abs((i+1)-maxiter)<22:
-                self.stat = self._comp_iterhist(x_new, time=ti, niter=i+1,
+            stat = self._comp_iterhist(x_new, time=ti, niter=i+1, \
+                        stat=stat, \
+                        stepsize=stepsize, alpha=alpha, \
+                        xold=x_old, verbo=1)
+            iterhist.append(stat.copy())
+            if (i+1) % 100 == 0:
+                stat_p = self._comp_iterhist(x_new, time=0, niter=i+1, \
+                        stat=stat, \
                         stepsize=stepsize, alpha=alpha,\
                         xold=x_old, verbo=2)
-            else:
-                self.stat = self._comp_iterhist(x_new, time=ti, niter=i+1,
-                        stepsize=stepsize, alpha=alpha,\
-                        xold=x_old, verbo=1)
-            iterhist.append(self.stat.copy())
-
-            if (i+1) % 100 == 0:
-                print("%d| f: %.2e | alpha: %.2e | h: %.7e | gradn: %.3e | s: %.4e| %.3e (sec)" % (i+1, self.stat['f_residual'], \
-                        alpha, self.stat['hval'], self.stat['gradnorm'], \
-                        stepsize, ti))
-            if self.stat['gradnorm'] <= self.tol_grad: #or self.stat['gradnorm'] <= 0.4*iterhist[min(i,max(i-200,100))]['gradnorm']:
+                print("%d| f: %.2e | alpha: %.2e | h: %.7e | gradn: %.3e | s: %.4e| %.3e (sec)" % (i+1, stat_p['f_residual'], \
+                        alpha, stat_p['hval'], stat_p['gradnorm'], \
+                        stepsize, stat_p['time']))
+            if stat['gradnorm'] <= self.tol_grad: #or self.stat['gradnorm'] <= 0.4*iterhist[min(i,max(i-200,100))]['gradnorm']:
                 break
-        self.stat = self._comp_iterhist(x_new, time=ti, niter=i+1,
-                stepsize=stepsize, alpha=alpha)
-        iterhist.append(self.stat.copy())
+        iterhist.append(stat.copy())
         iterh = pd.DataFrame(iterhist)
         return x_new, iterh
 

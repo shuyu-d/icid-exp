@@ -9,16 +9,19 @@ from aux.gen_settings import gen_list_settings, gen_list_optparams, gen_data_sem
 from icid import utils
 from icid.icid import run_icid, AMA_independece_decomp
 from external.test_linear import notears_linear
+import ges
 
 
 if __name__ == '__main__':
     timestr = time.strftime("%H%M%S%m%d")
-    FDIR = 'outputs/exp1_%s' % timestr
+    FDIR = 'outputs/exp2f_%s_ideal' % timestr
+    if not os.path.exists(FDIR):
+        os.makedirs(FDIR)
     # Generate input parameters
-    ds            = np.array([3000])
-    degs          = [1.0] # 0.5
+    ds            = np.array([25,50,75,100,200]) #x5  #,300,400,500])
+    degs          = np.linspace(1.2,2.0,5) #10 # 0.5
     graph_types   = ['ER']
-    sem_types     = ['gauss']
+    sem_types     = ['gauss','exp'] # x2
     R_N2D         = 32
     #
     pbs_l, pbs = gen_list_settings(d=ds, degs=degs, \
@@ -28,15 +31,10 @@ if __name__ == '__main__':
     #
     ms = {'icid':   False, \
           'ges':    False,\
-          'notears':False,\
-          'ideal': False}
+          'notears':False}
     ni = len(sys.argv)
     for i in range(ni):
         ms[sys.argv[i]] = True
-    if ni > 1:
-        FDIR = 'outputs/exp1_%s_%s' % (timestr, sys.argv[1])
-    if not os.path.exists(FDIR):
-        os.makedirs(FDIR)
     # Iterate through all problem settings ('pbs')
     res = []
     for i in range(len(pbs)):
@@ -51,13 +49,9 @@ if __name__ == '__main__':
                                 sem_type    = pbs['sem_type'][i], \
                                 seed = 1)
         #----------- ICID ------------
-        if ms['icid'] or ms['ideal']:
-            if ms['ideal']:
-                IC = 'ideal'
-            else:
-                IC = 'emp_gs'
+        if ms['icid']:
             # Parameters of ICID algorithm
-            opts={'opt_ic':         [IC], \
+            opts={'opt_ic':         ['ideal'], \
                 'idec_solver':     ['FISTA'], \
                   'k':              [25], \
                   'lambda_1':       [5e-2], \
@@ -99,8 +93,60 @@ if __name__ == '__main__':
                         'nnz':acc['nnz'], 'time': ith.iloc[-1]['time']}
                     )
                 pd.DataFrame(res, columns=res[0].keys()).to_csv('%s/res_all.csv' %FDIR)
+        #-------- NOTEARS ----------------
+        if ms['notears']:
+            # Parameters
+            opts={'lambda_1':       [1e-1, 4e-1]}
+            l_o, df_o = gen_list_optparams(opts)
+            print('List of opt parameters to tets are:')
+            print(df_o)
+            # Iterate through all optimization parameter configs
+            for j in range(len(df_o)):
+                print('-------Ready to run NOTEARS ----------')
+                t0 = timer()
+                # w_notears, _ = NOTEARS
+                W_no, ith_no = notears_linear(X, \
+                                        lambda1=df_o['lambda_1'][j], \
+                                        loss_type='l2', Wtrue=Wtrue)
+                t_no = timer() - t0
+                acc_no = utils.count_accuracy(Wtrue!=0, W_no!=0)
+                print(acc_no)
+                res.append({'alg':'NOTEARS',
+                            'd'           : pbs['d'][i], \
+                            'deg'         : pbs['deg'][i], \
+                            'n'           : pbs['n'][i], \
+                            'graph_type'  : pbs['graph_type'][i],\
+                            'sem_type'    : pbs['sem_type'][i], \
+                            'shd':acc_no['shd'], 'tpr':acc_no['tpr'], \
+                            'fdr':acc_no['fdr'], 'fpr':acc_no['fpr'], \
+                            'nnz':acc_no['nnz'], \
+                            'time': ith_no[-1]['time']}
+                        )
+                pd.DataFrame(ith_no).to_csv('%s/pb%dopt%d_ith_notears.csv' %(FDIR, i+1,j+1))
+                pd.DataFrame(res, columns=res[0].keys()).to_csv('%s/res_all.csv' %FDIR)
+        #-------- GES ----------------
+        if ms['ges']:
+            print('-------Ready to run GES ----------')
+            t0 = timer()
+            w_ges, _ = ges.fit_bic(X)
+            t_ges = timer() - t0
+            acc_ges = utils.count_accuracy(Wtrue!=0, w_ges!=0)
+            print(acc_ges)
+            res.append({'alg':'GES',
+                        'd'           : pbs['d'][i], \
+                        'deg'         : pbs['deg'][i], \
+                        'n'           : pbs['n'][i], \
+                        'graph_type'  : pbs['graph_type'][i],\
+                        'sem_type'    : pbs['sem_type'][i], \
+                        'shd':acc_ges['shd'], 'tpr':acc_ges['tpr'], \
+                        'fdr':acc_ges['fdr'], 'fpr':acc_ges['fpr'], \
+                        'nnz':acc_ges['nnz'], 'time': t_ges}
+                    )
+            pd.DataFrame(res, columns=res[0].keys()).to_csv('%s/res_all.csv' %FDIR)
     if len(res) > 0:
         endstr = time.strftime("%H%M%S%m%d")
         pd.DataFrame(res, columns=res[0].keys()).to_csv('%s/resall_%s.csv' %(FDIR,endstr))
+
+
 
 

@@ -15,11 +15,11 @@ if __name__ == '__main__':
     timestr = time.strftime("%H%M%S%m%d")
     FDIR = 'outputs/exp1_%s' % timestr
     # Generate input parameters
-    ds            = np.array([3000])
-    degs          = [1.0] # 0.5
+    ds           = np.array([800])
+    degs         = [0.5, 1.0] # 0.5
     graph_types   = ['ER']
     sem_types     = ['gauss']
-    R_N2D         = 32
+    R_N2D         = 5
     #
     pbs_l, pbs = gen_list_settings(d=ds, degs=degs, \
                                  graph_types=graph_types, \
@@ -50,6 +50,38 @@ if __name__ == '__main__':
                                 graph_type  = pbs['graph_type'][i],\
                                 sem_type    = pbs['sem_type'][i], \
                                 seed = 1)
+        #-------- NOTEARS ----------------
+        if ms['notears']:
+            # Parameters
+            opts={'lambda_1':       [1e-1]}
+            l_o, df_o = gen_list_optparams(opts)
+            print('List of opt parameters to tets are:')
+            print(df_o)
+            # Iterate through all optimization parameter configs
+            for j in range(len(df_o)):
+                print('-------Ready to run NOTEARS ----------')
+                t0 = timer()
+                # w_notears, _ = NOTEARS
+                W_no, ith_no = notears_linear(X, \
+                                        lambda1=df_o['lambda_1'][j], \
+                                        h_tol = 1e-5, \
+                                        loss_type='l2', Wtrue=Wtrue)
+                t_no = timer() - t0
+                acc_no = utils.count_accuracy(Wtrue!=0, W_no!=0)
+                print(acc_no)
+                res.append({'alg':'NOTEARS',
+                            'd'           : pbs['d'][i], \
+                            'deg'         : pbs['deg'][i], \
+                            'n'           : pbs['n'][i], \
+                            'graph_type'  : pbs['graph_type'][i],\
+                            'sem_type'    : pbs['sem_type'][i], \
+                            'shd':acc_no['shd'], 'tpr':acc_no['tpr'], \
+                            'fdr':acc_no['fdr'], 'fpr':acc_no['fpr'], \
+                            'nnz':acc_no['nnz'], \
+                            'time': ith_no[-1]['time']}
+                        )
+                pd.DataFrame(ith_no).to_csv('%s/pb%dopt%d_ith_notears.csv' %(FDIR, i+1,j+1))
+                pd.DataFrame(res, columns=res[0].keys()).to_csv('%s/res_all.csv' %FDIR)
         #----------- ICID ------------
         if ms['icid'] or ms['ideal']:
             if ms['ideal']:
