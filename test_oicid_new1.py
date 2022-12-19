@@ -6,7 +6,7 @@ import time, os
 import pandas as pd
 
 from icid import utils
-from icid.icid import run_icid, AMA_independece_decomp, run_oicid_refined
+from icid.icid import run_icid, AMA_independece_decomp
 from aux.gen_settings import gen_list_settings, gen_list_optparams, gen_data_sem, gen_graph_dag_with_markovblanket
 
 if __name__ == '__main__':
