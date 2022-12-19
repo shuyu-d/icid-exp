@@ -2,6 +2,22 @@ import numpy as np
 # import numpy.random as rnd
 import random as rnd
 import csv
+import networkx as nx
+
+def get_bunch_edges(W, is_directed=True):
+    # Get the bunch of edges in the form of a list of 2-tuples
+    if is_directed:
+        Gb = nx.DiGraph()
+        ignore_selfloop=False
+    else:
+        Gb = nx.Graph()
+        ignore_selfloop=True
+    if ignore_selfloop:
+        W = W - np.diag(np.diag(W))
+    edg1d = np.nonzero(W)
+    eb = [(edg1d[0][i], edg1d[1][i]) for i in range(len(edg1d[0]))]
+    Gb.add_edges_from(eb)
+    return eb, Gb
 
 def get_data_sachs(center=True, normalize=True, ndata=100):
     dim = 11
