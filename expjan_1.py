@@ -85,7 +85,7 @@ if __name__ == '__main__':
             'k':              [25], \
             'lambda_1':       [5e-2], \
             'idec_lambda1':   [LAM]}  #
-   l_o, df_o = gen_list_optparams(opts)
+   l_o, df_o = gen_list_optparams(opts_v1)
    #--------
    tid=0
    TTS = list(product(ds, degs, seeds))
@@ -95,44 +95,50 @@ if __name__ == '__main__':
        deg = tt[1]
        SEED = tt[2]
        # ----- optional time budget for exceptional cases
-       if deg > 2 and d > :
+       if deg > 2 and d > 200:
            # Force stop any method after <N> hours
            MAXTIME = N*3600 # to be imposed for each method to run
        # ---------
        # Generate random graph
        n = 10*d #
        spr = deg*d / d**2
-       W_true, MBs = gen_graph_dag_with_markovblanket(
-                                   d=d, deg=deg,
-                                   graph_type=graph_type,
-                                   seed=SEED) # seed=1 very good, 2 good
-       X = utils.simulate_linear_sem(W_true, n, sem_type)   # (same as before) size nxd, obeying the SEM "X.T = W_true.T  X.T + Noise"
+       W_true, X = gen_data_sem(d=d, \
+                                deg=deg, \
+                                n=n,\
+                                graph_type  = graph_type, \
+                                sem_type    = sem_type, \
+                                seed = SEED)
+       # (same as before) size nxd, obeying the SEM "X.T = W_true.T  X.T + Noise"
 
+       print('Experiment setting %d /%d (d=%d, deg=%.2f): ' %(tid, len(TTS),d,deg))
        print('\n========== Ghoshal =============\n')
-       df_a  <- pandas DataFrame containing at least one row of scores {'shd': , 'tpr': , 'fdr': , 'fpr': , 'nnz': } of the solution vs W_true
-       # test settings
-       df_a['tid'] = tid
-       df_a['graph_type'] = graph_type
-       df_a['sem_type'] = sem_type
-       df_a['seed'] = SEED
-       df_a['noise_ev'] = NOISE_EV
-       df_a['d'] = d
-       df_a['deg'] = deg
-       df_a['n'] = n
-       df_a['model'] = 'Ghoshal'
-       df_a['method'] = 'Ghoshal'
-       # df_a['options1'] = #
-       # df_a['options2'] = #
+       if False:
+           df_a = pd.DataFrame
+           # df_a  <- pandas DataFrame containing at least one row of scores {'shd': , 'tpr': , 'fdr': , 'fpr': , 'nnz': } of the solution vs W_true
+           # test settings
+           df_a['tid'] = tid
+           df_a['graph_type'] = graph_type
+           df_a['sem_type'] = sem_type
+           df_a['seed'] = SEED
+           df_a['noise_ev'] = NOISE_EV
+           df_a['d'] = d
+           df_a['deg'] = deg
+           df_a['n'] = n
+           df_a['model'] = 'Ghoshal'
+           df_a['method'] = 'Ghoshal'
+           # df_a['options1'] = #
+           # df_a['options2'] = #
 
-       # Append and save
-       if tid ==1:
-           res = pd.DataFrame
-           res = df_a.tail(1)
-       else:
-           res = pd.concat([res, df_a.tail(1)])
-       res.to_csv('%s/res_ghoshal.csv' %fdir)
+           # Append and save
+           if tid ==1:
+               res = pd.DataFrame
+               res = df_a.tail(1)
+           else:
+               res = pd.concat([res, df_a.tail(1)])
+           res.to_csv('%s/res_ghoshal.csv' %fdir)
 
        if False:
+           print('Experiment setting %d /%d: ' %(tid, len(TTS)))
            print('\n========== O-ICID v2=============\n')
            # True Theta
            Theta_true = (np.eye(d)-W_true) @ (np.eye(d)-W_true).T  / sigma_0
@@ -174,15 +180,16 @@ if __name__ == '__main__':
            # Append and save
            if tid ==1:
                # cont = ithg
-               res = pd.DataFrame
-               res = ithg.tail(1)
+               resb = pd.DataFrame
+               resb = ithg.tail(1)
            else:
                # cont = pd.concat([cont, ithg])
-               res = pd.concat([res, ithg.tail(1)])
+               resb = pd.concat([resb, ithg.tail(1)])
            # cont.to_csv('%s/iterh_alm-fista.csv' %fdir)
-           res.to_csv('%s/res_alm-fista.csv' %fdir)
+           resb.to_csv('%s/res_oicidv2.csv' %fdir)
 
        if False:
+           print('Experiment setting %d /%d: ' %(tid, len(TTS)))
            print('\n========== O-ICID v1=============\n')
            W_glo, ithg1, idh, W0  = run_icid(X, sigma_0=1.0, \
                                  k=df_o['k'][0], \
@@ -219,18 +226,6 @@ if __name__ == '__main__':
                # cont1 = pd.concat([cont1, ithg1])
                res1 = pd.concat([res1, ithg1.tail(1)])  #
            # cont1.to_csv('%s/iterh_fista-loram.csv' %fdir)
-           res1.to_csv('%s/res_fista-loram.csv' %fdir)
-
-       if False:
-           print('\n======= ALM BFGS ======\n')
-           #A_glo, ithg, idh = oicid_solver_alm(Theta_true, lambda1=LAM, maxiter=10, \
-           A2, ithg2, optinfo2 = oicid_solver_alm_exactfit(Theta_true, lambda1=LAM, maxiter=10, \
-                                                maxiter_primal=1e3, \
-                                                epsilon=1e-6,\
-                                                solver_primal = 'BFGS', \
-                                                Wtrue=W_true)
-           acc2 = utils.count_accuracy(W_true!=0, A_glo!=0)
-           print(acc2)
-
+           res1.to_csv('%s/res_oicidv1.csv' %fdir)
 
 
