@@ -108,7 +108,7 @@ if __name__ == '__main__':
         #   ALG:            notears, golem
         #   graph_type:     ER, SF
         #   SEED:           0-9
-        #   iset:           id of this test to help identify output folders/files (optional)
+        #   iset:           (optional) id of this test to help identify output folders/files
         iset, ALG, graph_type, SEED = int(sys.argv[4]), sys.argv[1], \
                                       sys.argv[2], int(sys.argv[3])
         print('Random seed:%d' %SEED)
@@ -118,6 +118,8 @@ if __name__ == '__main__':
         print('Nb of expected input args not matched. Stopping.' %len(TTS))
         TTS = []
 
+    # For each combination of (ALG, graph_type, SEED), test the settings
+    #       determined by (d, deg, DO_STD) in the following ranges
     ds = [50, 100, 200, 400]
     if graph_type == 'ER':
         degs= [1.0, 2.0] #
